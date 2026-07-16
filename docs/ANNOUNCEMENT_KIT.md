@@ -10,7 +10,7 @@ This kit provides reusable English copy and a practical launch checklist for int
 
 **Difference:** The confirmation window is independent of the current session's **Approve for me** setting. Denial, timeout, malformed input, and internal gate errors fail closed.
 
-**Honest boundary:** Hard blocking depends on Codex exposing `PreToolUse` or `PermissionRequest`. Startup context adds a behavioral safeguard, but actions inside an already writable workspace can still bypass the hard dialog when no event is emitted.
+**Honest boundary:** Hard blocking depends on Codex exposing `PreToolUse` or `PermissionRequest`. A live Codex App 0.144.2 test deleted a disposable file through `functions.exec` → `shell_command` without either plugin event or warning window. Startup context adds only a behavioral safeguard.
 
 ## Recommended launch assets
 
@@ -37,7 +37,7 @@ After installation, users must review and trust the `SessionStart`, `SubagentSta
 
 ### Title
 
-Codex Danger Gate v0.2.0 — independent human confirmation for high-risk Agent actions
+Codex Danger Gate v0.3.1 — event-dependent human confirmation for supported Agent actions
 
 ### Body
 
@@ -45,7 +45,7 @@ I built **Codex Danger Gate**, an open-source Windows plugin for developers who 
 
 It uses `PreToolUse` to detect supported high-risk operations, `PermissionRequest` to gate exposed sandbox escalations, and startup hooks to inject a concise action-specific confirmation policy without editing user `AGENTS.md` files.
 
-When a rule matches, Danger Gate opens a separate Windows confirmation dialog. The action proceeds only after a person clicks **Allow once**. Denial, closing the window, a 90-second timeout, malformed input, and internal errors fail closed.
+When a rule matches **and Codex emits a supported hook event**, Danger Gate opens a separate Windows confirmation dialog. The action proceeds only after a person clicks **Allow once**. Denial, closing the window, a 90-second timeout, malformed input, and internal errors fail closed.
 
 Install:
 
@@ -58,7 +58,7 @@ Repository: https://github.com/wilsongpt1/codex-danger-gate
 
 Latest release: https://github.com/wilsongpt1/codex-danger-gate/releases/latest
 
-This is defense in depth, not a complete sandbox. I would especially value feedback on false positives, missing destructive MCP naming patterns, Windows compatibility, and additional safe test cases.
+This is defense in depth, not a complete sandbox. Codex App 0.144.2 `functions.exec` deletion produced no usable plugin event in live testing, so that route has no Danger Gate hard protection. I would especially value feedback on false positives, event coverage across Codex builds, Windows compatibility, and additional safe test cases.
 
 ## Reddit or developer-community post
 
@@ -72,7 +72,7 @@ I use Codex automation, but I wanted a second checkpoint that is independent of 
 
 So I built **Codex Danger Gate**, a layered Windows-focused plugin. It detects supported destructive `PreToolUse` inputs, gates exposed sandbox `PermissionRequest` events, and adds concise confirmation context at session and subagent start. A hard-gate event opens a separate confirmation window with the pending input and risk reasons.
 
-The action runs only if a person clicks **Allow once**. Deny, close, timeout, malformed input, and internal errors fail closed.
+For an exposed hard-gate event, the action runs only if a person clicks **Allow once**. Deny, close, timeout, malformed input, and internal errors fail closed. Codex App 0.144.2 `functions.exec` deletion did not expose such an event in live testing and was not blocked.
 
 Two-command install:
 
@@ -95,7 +95,7 @@ Use a first comment that briefly explains the threat model, why normal Codex app
 
 ## X post
 
-I built Codex Danger Gate: an open-source Windows plugin that opens an independent human confirmation window before supported destructive Codex Agent actions run.
+I built Codex Danger Gate: an open-source Windows plugin that opens an independent human confirmation window when Codex exposes supported destructive Agent actions to plugin hooks.
 
 File deletion, force push, destructive SQL/infra, risky MCP names, and more. Deny/timeout/errors fail closed.
 
@@ -103,7 +103,7 @@ https://github.com/wilsongpt1/codex-danger-gate
 
 ## LinkedIn or Dev.to introduction
 
-Codex automation can save time, but high-risk tool calls deserve a clear security boundary. Codex Danger Gate adds a separate human confirmation step before supported destructive actions run on Windows, even when the current session uses automatic approval.
+Codex automation can save time, but high-risk tool calls deserve a clear security boundary. Codex Danger Gate adds a separate human confirmation step for supported hook events on Windows, even when the current session uses automatic approval. It cannot create missing hook events, and live Codex App 0.144.2 `functions.exec` testing demonstrated a route it cannot hard-block.
 
 The project is open source, includes a checksummed release ZIP, automated Windows tests, documented detection rules and limitations, and private vulnerability reporting.
 

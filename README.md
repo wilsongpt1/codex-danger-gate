@@ -10,7 +10,7 @@ Codex Danger Gate is a Windows-focused, layered Codex guardrail. It opens an ind
 For a matched action that reaches the hook, only a person clicking **Allow once** releases it. **Deny**, closing the window, a 90-second timeout, malformed hook input, and internal gate errors all fail closed.
 
 > [!IMPORTANT]
-> This project is an additional guardrail, not a complete sandbox. Operations inside an already writable workspace can still bypass the hard gate when Codex does not expose a tool or permission event. Keep the native sandbox enabled and use disposable workspaces, backups, least-privilege credentials, and protected branches.
+> A live end-to-end test on Codex App and bundled CLI 0.144.2 deleted a disposable file through `functions.exec` → `shell_command` without showing a Danger Gate window. Both `PreToolUse` and `PermissionRequest` were installed, trusted, and active, but that route exposed neither usable hard-gate event. **Danger Gate therefore provides no hard protection for this tested route.** This project is an additional event-dependent guardrail, not a complete sandbox.
 
 ## Download
 
@@ -57,8 +57,8 @@ See [Detection rules](docs/DETECTION_RULES.md) for the exact coverage and known 
 | `Bash`, `apply_patch`, `Edit`, `Write`, or MCP `PreToolUse` | Inspects documented destructive patterns and can deny before execution | **Hard gate when Codex emits the event** |
 | `PermissionRequest` | Opens the independent dialog for sandbox-boundary escalation, even when no destructive regex matches | **Hard gate when Codex emits the permission event**; normal Codex approval still follows an allow |
 | `SessionStart` and `SubagentStart` | Adds a concise policy requiring exact target, scope, material effect, and action-specific confirmation | **Behavioral guard**, not enforcement |
-| Codex Desktop `functions.exec` → `shell_command` outside the sandbox | Not visible to `PreToolUse`; may still reach the `PermissionRequest` gate when Codex requests escalation | Best effort and version-dependent |
-| Codex Desktop `functions.exec` inside an already writable workspace | Receives only the startup behavioral policy when no tool or permission event is emitted | **No hard hook coverage** |
+| Codex App 0.144.2 `functions.exec` → `shell_command` | Live deletion test exposed neither usable hard-gate event, despite active hooks | **No Danger Gate hard protection observed** |
+| Other wrapped or future tool routes | Can be gated only if that Codex build and handler emit `PreToolUse` or `PermissionRequest` | Unverified and version-dependent |
 | Indirect scripts, renamed executables, remote APIs, or innocuously named MCP tools | May not be recognizable from exposed input | Best effort only |
 
 The normal Codex sandbox approval is a separate control. A sandbox approval prompt is not the Danger Gate confirmation window.
@@ -71,7 +71,7 @@ The normal Codex sandbox approval is a separate control. A sandbox approval prom
 4. A matched or elevated action opens a topmost Windows window containing the hook event, tool, working directory, detected risks, and pending input.
 5. **Deny**, closing the window, timeout, or an internal error returns a deny decision. **Allow once** returns control to Codex; native sandbox approval may still be required.
 
-Plugin hooks must be reviewed and trusted before Codex runs them. In the current Codex Desktop integration, actions invoked through `functions.exec` → `shell_command` are not exposed as `PreToolUse` tool events. The `PermissionRequest` layer can help only when the action crosses the sandbox and Codex emits that event; it does not create a hard gate for actions already allowed inside a writable workspace.
+Plugin hooks must be reviewed and trusted before Codex runs them. Trust and active status mean Codex may run a hook for supported event dispatches; they do not mean every tool route emits those events. In the tested Codex App 0.144.2 route, `functions.exec` → `shell_command` emitted neither hard-gate event for an actual deletion.
 
 ## Safe test
 
@@ -84,9 +84,9 @@ Set-Content -LiteralPath (Join-Path $testPath 'dummy.txt') -Value 'Danger Gate t
 $testPath
 ```
 
-In a new Codex task opened on a different workspace, ask the Agent to delete only the printed disposable directory. First click **Deny** and confirm the directory remains. A dialog may come from either a supported `PreToolUse` event or a `PermissionRequest` sandbox escalation; its details identify the event. If no dialog appears, that route has no hard Danger Gate coverage in the current Codex build. Never use real documents, repositories, backups, or production data for the first test.
+In a new Codex task opened on a different workspace, ask the Agent to delete only the printed disposable directory. This is a **coverage probe**, not a promised popup. If a Danger Gate dialog appears, click **Deny** and confirm the directory remains. If no dialog appears, that route has no hard Danger Gate coverage in the current Codex build and the Agent may delete the target. The live 0.144.2 `functions.exec` test produced no plugin dialog. Never use real documents, repositories, backups, or production data for this test.
 
-Version 0.3.0 injects the compact behavioral safeguard automatically at session and subagent start. Users may still copy the [`AGENTS.md` guidance](docs/OPTIONAL_AGENT_GUIDANCE.md) when they want the rule to remain visible and durable outside the plugin.
+Version 0.3.1 injects the compact behavioral safeguard automatically at session and subagent start. Users may still copy the [`AGENTS.md` guidance](docs/OPTIONAL_AGENT_GUIDANCE.md) when they want the rule to remain visible and durable outside the plugin.
 
 ## Documentation
 
@@ -102,7 +102,7 @@ Version 0.3.0 injects the compact behavioral safeguard automatically at session 
 
 ## Security boundary
 
-Codex Danger Gate can hard-block only events Codex exposes to its hooks. In particular, the current Codex Desktop `functions.exec` → `shell_command` route bypasses `PreToolUse`; when it also stays inside an already writable workspace, it may produce no `PermissionRequest` event and therefore no hard Danger Gate dialog. Startup context still asks the Agent to obtain explicit confirmation, but prompt guidance is not a security boundary.
+Codex Danger Gate can hard-block only events Codex exposes to its hooks. The live Codex App and bundled CLI 0.144.2 test confirmed that `functions.exec` → `shell_command` deletion can bypass both registered hard gates and complete without a Danger Gate window. Startup context still asks the Agent to obtain explicit confirmation, but prompt guidance is not a security boundary and did not prevent the tested deletion.
 
 The plugin does not guarantee detection of every destructive operation, encoded payload, indirect script, renamed executable, remote API mutation, or MCP tool with an innocuous name. A user-installed hook can also be disabled or left untrusted. For strong protection, keep important originals read-only and let Codex work in a disposable clone or worktree.
 

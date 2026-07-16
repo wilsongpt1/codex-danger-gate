@@ -96,15 +96,15 @@ $testPath
 
 In a new Codex task, ask the Agent to delete only the printed disposable directory.
 
-This verification can exercise either a supported `PreToolUse` event or a sandbox `PermissionRequest`. Keep the disposable directory outside the task's active workspace; otherwise a wrapped action may already have write permission and emit neither event.
+This verification is a coverage probe. It can exercise a supported `PreToolUse` event or a sandbox `PermissionRequest` only when the current Codex build and tool handler expose that event. A live Codex App and bundled CLI 0.144.2 deletion through `functions.exec` → `shell_command` emitted neither usable event, even with all hooks active.
 
-Expected behavior:
+Possible outcomes:
 
 1. Danger Gate opens a separate confirmation window.
 2. Clicking **Deny** leaves the test directory in place.
 3. The dialog identifies whether it came from `PreToolUse` or `PermissionRequest`.
 4. Clicking **Allow once** releases the gate, but Codex may still require its normal sandbox approval. The two approval layers are independent.
-5. If no dialog appears, the current Codex build did not expose that route to either hard hook. Treat it as behavioral-policy-only coverage.
+5. If no dialog appears, the current Codex build did not expose that route to either hard hook. The Agent may complete the deletion; treat the route as having no Danger Gate hard protection.
 
 Never use real documents, repositories, photos, backups, or production data for an initial test.
 
@@ -188,4 +188,4 @@ See [Troubleshooting](docs/TROUBLESHOOTING.md) for hook trust, missing dialogs, 
 
 ## 10. Security limits
 
-Danger Gate is an additional guardrail, not a complete sandbox. It cannot hard-block actions that Codex exposes to neither `PreToolUse` nor `PermissionRequest`, including wrapped actions inside an already writable workspace. The automatically injected startup policy is behavioral guidance, not enforcement. Continue using least-privilege filesystem and cloud credentials, disposable workspaces, network restrictions, Git, tested backups, and separate development and production environments.
+Danger Gate is an additional event-dependent guardrail, not a complete sandbox. It cannot hard-block actions that Codex exposes to neither `PreToolUse` nor `PermissionRequest`. The live 0.144.2 `functions.exec` deletion test demonstrated this bypass even while the hooks were trusted and active. The automatically injected startup policy is behavioral guidance, not enforcement. Continue using least-privilege filesystem and cloud credentials, disposable workspaces, network restrictions, Git, tested backups, and separate development and production environments.
