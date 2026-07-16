@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.3.1] - 2026-07-16
+
+### Changed
+
+- Corrected the protection claims after a live end-to-end test on Codex App and bundled CLI 0.144.2 deleted a disposable file through `functions.exec` → `shell_command` without emitting a usable `PreToolUse` or `PermissionRequest` hook event.
+- Marked the tested wrapper route as having no Danger Gate hard protection, even when all plugin hooks are installed, trusted, and active.
+- Reworked the verification and launch guidance so a missing dialog is treated as a demonstrated coverage result rather than a successful installation test.
+
+No detection or hook behavior changed in this release. Existing event-dependent gates remain installed for Codex builds and tool handlers that expose their events.
+
 ## [0.3.0] - 2026-07-16
 
 ### Added

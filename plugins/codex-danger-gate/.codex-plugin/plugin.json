@@ -1,6 +1,6 @@
 {
   "name": "codex-danger-gate",
-  "version": "0.3.0+codex.20260716142729",
+  "version": "0.3.1+codex.20260716165920",
   "description": "Layer human confirmation across supported high-risk tool calls, sandbox permission requests, and Agent startup context.",
   "author": {
     "name": "Wilson"
@@ -8,7 +8,7 @@
   "interface": {
     "displayName": "Codex Danger Gate",
     "shortDescription": "Layered confirmation for high-risk Agent actions.",
-    "longDescription": "Adds independent Windows confirmation dialogs for supported PreToolUse and PermissionRequest events, plus concise destructive-action confirmation context at session and subagent start. Unexposed tool routes inside writable areas remain outside hard hook coverage.",
+    "longDescription": "Adds independent Windows confirmation dialogs for supported PreToolUse and PermissionRequest events, plus concise destructive-action confirmation context at session and subagent start. Live Codex App 0.144.2 testing found that functions.exec deletion can expose neither hard-gate event.",
     "developerName": "Wilson",
     "category": "Productivity",
     "capabilities": [

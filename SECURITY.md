@@ -21,7 +21,7 @@ You should receive an acknowledgement within seven days. Please allow time for i
 
 ## Security model
 
-Codex Danger Gate hard-gates supported `PreToolUse` and `PermissionRequest` events exposed by Codex and injects a behavioral confirmation policy at session and subagent start. The current Codex Desktop `functions.exec` → `shell_command` route is not exposed to `PreToolUse`; inside an already writable workspace it may also emit no permission event and therefore bypass the hard dialog. The startup policy is not enforcement. This project is not a complete sandbox, malware scanner, command parser, database proxy, or organization-enforced policy. Review [Detection rules and limitations](docs/DETECTION_RULES.md) before relying on it.
+Codex Danger Gate hard-gates supported `PreToolUse` and `PermissionRequest` events exposed by Codex and injects a behavioral confirmation policy at session and subagent start. In a live Codex App and bundled CLI 0.144.2 test, `functions.exec` → `shell_command` deleted a disposable file without emitting either usable hard-gate event, despite all hooks being trusted and active. That tested route has no Danger Gate hard protection. The startup policy is not enforcement. This project is not a complete sandbox, malware scanner, command parser, database proxy, or organization-enforced policy. Review [Detection rules and limitations](docs/DETECTION_RULES.md) before relying on it.
 
 ## Secrets and diagnostic data
 

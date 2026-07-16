@@ -14,17 +14,17 @@ Open `/hooks`, review the `SessionStart`, `SubagentStart`, `PreToolUse`, and `Pe
 
 ## No confirmation window appears
 
-1. Determine which tool route Codex used and whether it crossed the sandbox. The current Codex Desktop `functions.exec` → `shell_command` route is not exposed to `PreToolUse`.
+1. Determine which tool route Codex used. The tested Codex App 0.144.2 `functions.exec` → `shell_command` deletion route exposed neither usable hard-gate event.
 2. Confirm `/hooks` reports both `PreToolUse` and `PermissionRequest` as active.
 3. Restart Codex Desktop and create a new task.
 4. Confirm the pending action matches a documented rule.
 5. Confirm Windows can launch `powershell.exe` and display Windows Forms.
 6. Confirm the installed hard-gate hooks point to `scripts\danger-gate.ps1` and startup hooks point to `scripts\safety-context.ps1`.
-7. If the action was already inside a writable workspace and Codex emitted neither hard event, no dialog is expected; only the behavioral startup policy applies.
+7. If Codex emitted neither hard event, no dialog is expected and Danger Gate cannot stop the action; only the non-enforcing startup policy applies.
 
 ## A Codex approval appears but no Danger Gate window appears
 
-The Codex sandbox approval and the Danger Gate Windows dialog are separate controls. Version 0.3.0 also registers `PermissionRequest`, so an exposed escalation can produce a Danger Gate dialog before the native approval. If that tool handler does not emit the hook event, only the native approval appears. Only the window titled **Codex high-risk action confirmation** belongs to this plugin.
+The Codex sandbox approval and the Danger Gate Windows dialog are separate controls. Version 0.3.1 registers `PermissionRequest`, so an exposed escalation can produce a Danger Gate dialog before the native approval. If that tool handler does not emit the hook event, only the native approval appears. The live 0.144.2 wrapper-route test emitted no plugin dialog at all. Only the window titled **Codex high-risk action confirmation** belongs to this plugin.
 
 ## The dialog appears behind another window
 
@@ -38,7 +38,7 @@ Click **Deny**, copy only a sanitized version of the command, and open a false-p
 
 Do not retry it against real data. First determine whether Codex exposed the action through a supported event:
 
-- If the route was `functions.exec` → `shell_command` inside a writable workspace, this is a documented hard-coverage limit.
+- If the route was Codex App 0.144.2 `functions.exec` → `shell_command`, this matches the documented live-test hard-coverage gap.
 - If it crossed the sandbox but no `PermissionRequest` hook ran, record the Codex version and report an event-coverage gap.
 - If a supported event reached the hook but a documented rule did not match, reproduce it with a disposable local target and report a detection gap.
 

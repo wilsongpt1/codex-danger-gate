@@ -1,6 +1,6 @@
 # Optional Agent Guidance
 
-Danger Gate 0.3.0 injects this policy automatically through `SessionStart` and `SubagentStart`. This optional `AGENTS.md` copy is useful when users want the same rule to remain visible and durable even when the plugin is disabled or unavailable.
+Danger Gate 0.3.1 injects this policy automatically through `SessionStart` and `SubagentStart`. This optional `AGENTS.md` copy is useful when users want the same rule to remain visible and durable even when the plugin is disabled or unavailable.
 
 The plugin never installs or modifies global or project-level `AGENTS.md` files. Both injected and copied guidance are behavioral safeguards, not enforcement: they cannot create a missing tool event or override filesystem permissions.
 

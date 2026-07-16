@@ -14,7 +14,7 @@ Danger Gate has three event-dependent layers:
 | `PermissionRequest` | Gates any exposed sandbox-boundary escalation and also evaluates available command input | Hard gate |
 | `SessionStart`, `SubagentStart` | Injects the action-specific confirmation policy | Behavioral guard only |
 
-The current Codex Desktop `functions.exec` → `shell_command` route does not emit a supported `PreToolUse` event. It can receive a hard gate only if Codex separately emits `PermissionRequest` because the action crosses the sandbox. Inside an already writable workspace, the route may emit neither event; the startup behavioral policy is then the only Danger Gate layer.
+Registration does not guarantee event dispatch. A live Codex App and bundled CLI 0.144.2 test deleted a disposable file through `functions.exec` → `shell_command` while all hooks were active, but emitted neither usable `PreToolUse` nor `PermissionRequest` event. Do not rely on Danger Gate for hard protection on that tested route. Other versions and tool handlers remain event-dependent and must be tested separately.
 
 ## Shell and command input
 
@@ -63,7 +63,7 @@ The pending action is denied when:
 
 - Codex can invoke the hard gate only for events it exposes to `PreToolUse` or `PermissionRequest`.
 - `PermissionRequest` coverage also depends on Codex emitting the event for that tool handler and platform build.
-- The current Codex Desktop `functions.exec` → `shell_command` route is not exposed to `PreToolUse`. Inside an already writable workspace it may also avoid `PermissionRequest`, so destructive commands can bypass the hard dialog.
+- The tested Codex App 0.144.2 `functions.exec` → `shell_command` deletion route bypassed both hard gates and completed without the plugin dialog.
 - Session and subagent policy injection shapes Agent behavior but cannot enforce a deny decision.
 - Regex matching is not a complete shell, SQL, or PowerShell parser.
 - Indirect execution through scripts, aliases, renamed executables, encoded data, or remote APIs may not be recognizable.
