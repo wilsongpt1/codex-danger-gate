@@ -1,0 +1,26 @@
+name: Feature request
+description: Suggest an improvement or new detection rule
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What risk or workflow should the project address?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the desired detection or user experience.
+    validations:
+      required: true
+  - type: textarea
+    id: falsepositives
+    attributes:
+      label: False-positive considerations
+      description: Which safe commands or tools could look similar?
+    validations:
+      required: true

@@ -1,0 +1,74 @@
+name: Publish release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Run smoke tests
+        shell: powershell
+        run: powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tests\danger-gate-smoke.ps1
+
+      - name: Verify tag and plugin version
+        shell: pwsh
+        run: |
+          $manifest = Get-Content -LiteralPath 'plugins/codex-danger-gate/.codex-plugin/plugin.json' -Raw | ConvertFrom-Json
+          $releaseVersion = ($manifest.version -split '\+')[0]
+          if ($env:GITHUB_REF_NAME -ne "v$releaseVersion") {
+            throw "Tag $env:GITHUB_REF_NAME does not match plugin version $releaseVersion."
+          }
+
+      - name: Build release archive
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME.TrimStart('v')
+          $stageParent = Join-Path $env:RUNNER_TEMP 'package'
+          $stage = Join-Path $stageParent 'codex-danger-gate'
+          New-Item -ItemType Directory -Path $stage -Force | Out-Null
+
+          @(
+            '.agents',
+            'plugins',
+            'docs',
+            'README.md',
+            'INSTALL.md',
+            'LICENSE',
+            'SECURITY.md',
+            'SUPPORT.md',
+            'CHANGELOG.md'
+          ) | ForEach-Object {
+            Copy-Item -LiteralPath $_ -Destination $stage -Recurse -Force
+          }
+
+          New-Item -ItemType Directory -Path 'dist' -Force | Out-Null
+          $zip = "dist/codex-danger-gate-$version.zip"
+          Compress-Archive -LiteralPath $stage -DestinationPath $zip -CompressionLevel Optimal
+          $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash
+          [System.IO.File]::WriteAllText(
+            "$zip.sha256.txt",
+            "$hash  codex-danger-gate-$version.zip`n",
+            [System.Text.UTF8Encoding]::new($false)
+          )
+
+      - name: Create GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = $env:GITHUB_REF_NAME.TrimStart('v')
+          gh release create $env:GITHUB_REF_NAME `
+            "dist/codex-danger-gate-$version.zip" `
+            "dist/codex-danger-gate-$version.zip.sha256.txt" `
+            --title "Codex Danger Gate $env:GITHUB_REF_NAME" `
+            --generate-notes `
+            --verify-tag

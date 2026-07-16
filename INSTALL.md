@@ -1,44 +1,23 @@
-# Codex Danger Gate Windows 安裝指引
+# Installing Codex Danger Gate on Windows
 
-本指引適用於 Windows 10／11、Codex Desktop 及 Codex CLI。
+This guide covers online installation from GitHub, offline installation from a release ZIP, hook review, safe verification, updates, removal, and common recovery steps.
 
-## 1. 準備及解壓縮
+## 1. Requirements
 
-前往以下頁面下載最新的 `codes-danger-gate-<版本>.zip`：
+- Windows 10 or Windows 11
+- Codex Desktop or Codex CLI with plugin and hook support
+- Windows PowerShell 5.1 or PowerShell 7
+- Network access to GitHub for online installation
 
-```text
-https://github.com/wilsongpt1/codes-danger-gate/releases/latest
-```
+## 2. Find the Codex CLI
 
-如果 Release 另外提供 SHA-256，請先驗證：
+First try:
 
 ```powershell
-Get-FileHash "$env:USERPROFILE\Downloads\codes-danger-gate-<版本>.zip" -Algorithm SHA256
+codex --version
 ```
 
-SHA-256 不相同就不要安裝。
-
-在 File Explorer 右鍵 ZIP，選擇 **Extract All**。建議解壓到固定位置：
-
-```text
-C:\Users\<你的用戶名>\CodexPlugins\DangerGate\
-```
-
-完成後應有以下檔案：
-
-```text
-codes-danger-gate\
-├─ .agents\plugins\marketplace.json
-├─ plugins\codex-danger-gate\.codex-plugin\plugin.json
-├─ plugins\codex-danger-gate\hooks\hooks.json
-├─ plugins\codex-danger-gate\scripts\danger-gate.ps1
-├─ INSTALL.md
-└─ README.md
-```
-
-## 2. 找出 Codex CLI
-
-開啟 Windows PowerShell，貼上：
+If PowerShell reports that `codex` is not recognized, use the CLI bundled with Codex Desktop:
 
 ```powershell
 $codexCommand = Get-Command codex -ErrorAction SilentlyContinue
@@ -57,64 +36,56 @@ else {
 }
 
 if (-not $codexExe) {
-    throw "找不到 Codex CLI。請先安裝或更新 Codex Desktop。"
+    throw "Codex CLI was not found. Install or update Codex Desktop first."
 }
 
 & $codexExe --version
 ```
 
-成功時會顯示類似 `codex-cli 0.144.2`，實際版本可以較新。
+Use `& $codexExe` instead of `codex` in the commands below if the CLI is not on `PATH`.
 
-## 3. 登記 Marketplace
+## 3. Online installation from GitHub
 
-請按實際解壓位置調整 `$marketplace`：
-
-```powershell
-$marketplace = "$env:USERPROFILE\CodexPlugins\DangerGate\codes-danger-gate"
-
-if (-not (Test-Path -LiteralPath "$marketplace\.agents\plugins\marketplace.json")) {
-    throw "找不到 marketplace.json，請檢查解壓路徑。"
-}
-
-& $codexExe plugin marketplace add $marketplace
-```
-
-## 4. 安裝 Plugin
+Register this repository as a Codex plugin marketplace:
 
 ```powershell
-& $codexExe plugin add codex-danger-gate@wilson-security
+& $codexExe plugin marketplace add wilsongpt1/codex-danger-gate
 ```
 
-## 5. Review及 Trust Hook
+Install the plugin:
 
-啟動 Codex CLI：
+```powershell
+& $codexExe plugin add codex-danger-gate@danger-gate
+```
+
+Start Codex CLI:
 
 ```powershell
 & $codexExe
 ```
 
-進入 CLI 後輸入：
+## 4. Review and trust the hook
+
+Inside the Codex CLI terminal interface, enter:
 
 ```text
 /hooks
 ```
 
-然後：
+Review the pending hook and verify:
 
-1. 按 `Enter` review `PreToolUse` hook。
-2. 確認來源是 `codex-danger-gate` plugin。
-3. 確認 matcher 是 `^(Bash|apply_patch|Edit|Write|mcp__.*)$`。
-4. 確認 command 指向 plugin 內的 `scripts\danger-gate.ps1`。
-5. 按 `t` trust。
-6. 返回後確認 `PreToolUse Installed: 1 Active: 1`。
-7. 按 `Esc` 離開並關閉 CLI。
-8. 重新啟動 Codex Desktop或建立新 task。
+1. The event is `PreToolUse`.
+2. The source is the `codex-danger-gate` plugin.
+3. The matcher is `^(Bash|apply_patch|Edit|Write|mcp__.*)$`.
+4. The command points to `scripts\danger-gate.ps1` inside the installed plugin.
+5. Press `t` to trust the reviewed hook.
+6. Confirm the hooks screen reports one installed and one active `PreToolUse` hook.
 
-不要使用 `--dangerously-bypass-hook-trust` 作正式安裝。
+Do not use `--dangerously-bypass-hook-trust` for a normal installation. Restart Codex Desktop or create a new task after trusting the hook.
 
-## 6. 安全測試
+## 5. Safe verification
 
-先建立專用 dummy folder：
+Create a disposable test directory:
 
 ```powershell
 $testPath = Join-Path $env:TEMP 'codex-danger-gate-test'
@@ -123,67 +94,93 @@ Set-Content -LiteralPath (Join-Path $testPath 'dummy.txt') -Value 'Danger Gate t
 $testPath
 ```
 
-然後在新 Codex task 要求 Agent **只刪除剛才顯示的 dummy folder**。
+In a new Codex task, ask the Agent to delete only the printed disposable directory.
 
-預期結果：
+Expected behavior:
 
-1. Danger Gate 顯示獨立確認視窗。
-2. 按 **Deny** 後，dummy folder 保留。
-3. 再測試並按 **Allow once** 時，Codex仍可能要求正常 sandbox approval；兩層權限互相獨立。
+1. Danger Gate opens a separate confirmation window.
+2. Clicking **Deny** leaves the test directory in place.
+3. Clicking **Allow once** releases the gate, but Codex may still require its normal sandbox approval. The two approval layers are independent.
 
-切勿使用真實文件、相片、repository 或 production data 作首次測試。
+Never use real documents, repositories, photos, backups, or production data for an initial test.
 
-## 7. 更新 Plugin
+## 6. Offline installation from a release ZIP
 
-1. 關閉 Codex Desktop 及 CLI。
-2. 移除目前安裝記錄：
+Open the [latest release page](https://github.com/wilsongpt1/codex-danger-gate/releases/latest) and download:
 
-   ```powershell
-   & $codexExe plugin remove codex-danger-gate@wilson-security
-   & $codexExe plugin marketplace remove wilson-security
-   ```
+- `codex-danger-gate-<version>.zip`
+- `codex-danger-gate-<version>.zip.sha256.txt`
 
-3. 用新版 ZIP 內容取代原有 `codes-danger-gate` 目錄。
-4. 重新登記及安裝：
-
-   ```powershell
-   & $codexExe plugin marketplace add $marketplace
-   & $codexExe plugin add codex-danger-gate@wilson-security
-   ```
-
-5. 開新 task 測試新版。
-6. 如果 `/hooks` 顯示 hook 需要 review，重新檢查及 trust。
-
-## 8. 移除 Plugin
+Verify the download:
 
 ```powershell
-& $codexExe plugin remove codex-danger-gate@wilson-security
-& $codexExe plugin marketplace remove wilson-security
+$zip = "$env:USERPROFILE\Downloads\codex-danger-gate-<version>.zip"
+Get-FileHash -LiteralPath $zip -Algorithm SHA256
+Get-Content -LiteralPath "$zip.sha256.txt"
 ```
 
-確認移除成功後，才手動刪除已解壓的 marketplace 目錄。
+The two SHA-256 values must match. Do not install a mismatched archive.
 
-## 疑難排解
+Extract the ZIP to a stable directory such as:
 
-### `codex is not recognized`
+```text
+C:\Users\<username>\CodexPlugins\codex-danger-gate\
+```
 
-重新執行本指引第 2 步，然後使用 `& $codexExe`，毋須直接輸入 `codex`。
+The extracted marketplace root must contain:
 
-### `/hooks` 變成普通聊天訊息
+```text
+codex-danger-gate\
+├─ .agents\plugins\marketplace.json
+├─ plugins\codex-danger-gate\.codex-plugin\plugin.json
+├─ plugins\codex-danger-gate\hooks\hooks.json
+├─ plugins\codex-danger-gate\scripts\danger-gate.ps1
+├─ INSTALL.md
+└─ README.md
+```
 
-`/hooks` 必須在 Codex CLI TUI 裡輸入，不是在 Codex Desktop composer。
+Register the extracted directory and install the plugin:
 
-### `Installed: 1` 但 `Active: 0`
+```powershell
+$marketplace = "$env:USERPROFILE\CodexPlugins\codex-danger-gate"
 
-進入 `/hooks` review並 trust `PreToolUse` hook。完成後應顯示 `Active: 1`。
+if (-not (Test-Path -LiteralPath "$marketplace\.agents\plugins\marketplace.json")) {
+    throw "marketplace.json was not found. Check the extraction path."
+}
 
-### 沒有彈出確認視窗
+& $codexExe plugin marketplace add $marketplace
+& $codexExe plugin add codex-danger-gate@danger-gate
+```
 
-1. 確認 `/hooks` 顯示 `PreToolUse Active: 1`。
-2. 關閉並重新啟動 Codex Desktop。
-3. 建立新 task 再測試。
-4. 確認測試指令屬於 Danger Gate 已涵蓋的規則。
+Complete the hook trust steps in section 4.
 
-## 安全限制
+## 7. Update
 
-Danger Gate 是額外 guardrail，不是完整 sandbox。請繼續使用 least-privilege filesystem permissions、network restrictions、Git及離線備份；不要把首次測試或高風險 automation 直接連接 production data。
+For a GitHub-backed installation:
+
+```powershell
+& $codexExe plugin marketplace upgrade danger-gate
+& $codexExe plugin remove codex-danger-gate@danger-gate
+& $codexExe plugin add codex-danger-gate@danger-gate
+```
+
+For an offline installation, remove the installed plugin and marketplace registration, replace the extracted directory with the new release, then register and install it again.
+
+Start a new task after updating. If `/hooks` reports that the hook changed, review the new definition before trusting it.
+
+## 8. Remove
+
+```powershell
+& $codexExe plugin remove codex-danger-gate@danger-gate
+& $codexExe plugin marketplace remove danger-gate
+```
+
+After both commands succeed, you may delete the extracted offline marketplace directory.
+
+## 9. Troubleshooting
+
+See [Troubleshooting](docs/TROUBLESHOOTING.md) for hook trust, missing dialogs, CLI discovery, false positives, and log-safe diagnostics.
+
+## 10. Security limits
+
+Danger Gate is an additional guardrail, not a complete sandbox. Continue using least-privilege filesystem and cloud credentials, network restrictions, Git, tested backups, and separate development and production environments.

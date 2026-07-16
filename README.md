@@ -1,64 +1,94 @@
 # Codex Danger Gate
 
-Repository: https://github.com/wilsongpt1/codes-danger-gate
+[![Windows validation](https://github.com/wilsongpt1/codex-danger-gate/actions/workflows/validate.yml/badge.svg)](https://github.com/wilsongpt1/codex-danger-gate/actions/workflows/validate.yml)
+[![Latest release](https://img.shields.io/github/v/release/wilsongpt1/codex-danger-gate)](https://github.com/wilsongpt1/codex-danger-gate/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Platform: Windows](https://img.shields.io/badge/platform-Windows-0078D4.svg)](INSTALL.md)
 
-## 中文快速開始
+Codex Danger Gate is a Windows-focused Codex plugin that requires explicit human confirmation before supported high-risk Agent actions can run. Its confirmation window is independent of the current session's **Approve for me** setting.
 
-Codex Danger Gate 是一個以 Windows 為主的 Codex plugin。當 Agent 準備執行受支援的高危操作時，它會先顯示獨立確認視窗；這個視窗不受目前 task 的 **Approve for me** 設定控制。
+Only a person clicking **Allow once** releases the pending action. **Deny**, closing the window, a 90-second timeout, malformed hook input, and internal gate errors all fail closed.
 
-完整的繁體中文 Windows 安裝、hook trust、安全測試、更新、移除及疑難排解步驟：
+> [!IMPORTANT]
+> This project is an additional guardrail, not a complete sandbox or a replacement for backups, least-privilege credentials, network controls, and production change management.
 
-➡️ **[閱讀 INSTALL.md](INSTALL.md)**
+## Download
 
-發佈版 ZIP 可在 [GitHub Releases](https://github.com/wilsongpt1/codes-danger-gate/releases) 下載。
+- [Download the latest release](https://github.com/wilsongpt1/codex-danger-gate/releases/latest)
+- [Read the complete Windows installation guide](INSTALL.md)
+- [Review all detection rules](docs/DETECTION_RULES.md)
 
-只有真人按下 **Allow once** 才會放行。按 **Deny**、關閉視窗、90 秒逾時或 gate 發生錯誤都會拒絕操作。
+Every release includes a ready-to-install ZIP and a SHA-256 checksum file.
 
-## Overview
+## Quick install
 
-Codex Danger Gate is a Windows-focused Codex plugin that asks a human to confirm supported high-risk Agent actions before they run. The confirmation dialog is independent of the session's **Approve for me** setting.
+Requirements: Windows 10 or 11, Codex Desktop or Codex CLI with plugin support, and Windows PowerShell 5.1 or PowerShell 7.
 
-## What it detects
+Open PowerShell and run:
 
-- File and directory deletion or content clearing
-- Disk formatting and raw device writes
-- Destructive Git commands, including `reset --hard`, forced clean, and force push
-- Destructive database and infrastructure commands
-- System shutdown, force-kill, registry/service deletion, and backup deletion
-- Selected security weakening and permission takeover commands
+```powershell
+codex plugin marketplace add wilsongpt1/codex-danger-gate
+codex plugin add codex-danger-gate@danger-gate
+```
+
+Then start Codex CLI, enter `/hooks`, review the `PreToolUse` hook, and press `t` to trust it. Restart Codex Desktop or start a new task after installation.
+
+If `codex` is not on `PATH`, follow the [CLI discovery steps](INSTALL.md#2-find-the-codex-cli).
+
+## What it protects
+
+The gate currently detects supported forms of:
+
+- File or directory deletion and content clearing
+- Disk formatting, repartitioning, and raw device writes
+- Destructive Git operations such as hard reset, forced clean, and force push
+- Destructive SQL, Terraform, Kubernetes, Helm, and cloud CLI operations
+- Shutdown, forced process termination, registry deletion, service deletion, and backup deletion
+- Selected endpoint-security weakening and filesystem permission takeover commands
 - File deletion or movement through `apply_patch`
-- MCP tool names that indicate destructive operations
+- MCP tool names that indicate destructive or irreversible actions
 
-Denial, timeout, malformed hook input, and internal errors fail closed.
+See [Detection rules](docs/DETECTION_RULES.md) for the exact coverage and known limits.
 
-## Install
+## How it works
 
-For detailed Traditional Chinese instructions, see [INSTALL.md](INSTALL.md).
+1. Codex loads the plugin's `PreToolUse` lifecycle hook.
+2. The hook examines supported tool names and pending tool input.
+3. Safe or unmatched actions continue without a dialog.
+4. A matched high-risk action opens a topmost Windows confirmation window containing the tool, working directory, detected risks, and pending input.
+5. The hook returns an explicit allow or deny decision to Codex.
 
-1. Download the latest ZIP from [GitHub Releases](https://github.com/wilsongpt1/codes-danger-gate/releases) and extract it to a stable local path.
-2. Register the marketplace:
+Plugin hooks must be reviewed and trusted before Codex runs them. The matcher covers `Bash`, `apply_patch`, `Edit`, `Write`, and MCP tool names, subject to the tool events Codex exposes to hooks.
 
-   ```powershell
-   codex plugin marketplace add "C:\path\to\codex-danger-gate-marketplace"
-   ```
+## Safe test
 
-3. Install the plugin:
+Create a disposable test directory:
 
-   ```powershell
-   codex plugin add codex-danger-gate@wilson-security
-   ```
+```powershell
+$testPath = Join-Path $env:TEMP 'codex-danger-gate-test'
+New-Item -ItemType Directory -Path $testPath -Force | Out-Null
+Set-Content -LiteralPath (Join-Path $testPath 'dummy.txt') -Value 'Danger Gate test only'
+$testPath
+```
 
-4. Restart Codex or start a new task.
-5. Run `/hooks`, review the plugin hook, and trust it.
+In a new Codex task, ask the Agent to delete only the printed disposable directory. First click **Deny** and confirm the directory remains. Never use real documents, repositories, backups, or production data for the first test.
 
-## Update
+## Documentation
 
-Remove the installed plugin and marketplace registration, replace the extracted marketplace with the new version, then register and install it again. Start a new task and review the hook again if Codex reports that its hash changed.
-
-## Remove
-
-Remove `codex-danger-gate@wilson-security` from `/plugins` or with the supported `codex plugin` removal command shown by `codex plugin --help`. Remove the marketplace only after no installed plugin depends on it.
+- [Installation, update, removal, and verification](INSTALL.md)
+- [Detection rules and limitations](docs/DETECTION_RULES.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [Security policy](SECURITY.md)
+- [Contributing](CONTRIBUTING.md)
+- [Support](SUPPORT.md)
+- [Changelog](CHANGELOG.md)
 
 ## Security boundary
 
-This plugin is a guardrail, not a complete sandbox. Codex currently does not expose every shell or tool path to `PreToolUse`. Keep `read-only` or least-privilege filesystem permissions, network restrictions, backups, and version control enabled. A user-installed plugin can also be disabled; organization-enforced protection requires a managed hook deployed through administrator-controlled requirements.
+Codex Danger Gate can only inspect tool events and input exposed to its hook. It does not guarantee detection of every destructive operation, encoded payload, indirect script, renamed executable, remote API mutation, or MCP tool with an innocuous name. A user-installed hook can also be disabled or left untrusted.
+
+For organization-enforced protection, use administrator-managed hooks and policies in addition to this plugin. Keep filesystem permissions narrow, use non-production credentials for development, require database backups, and preserve version-controlled work.
+
+## License
+
+Released under the [MIT License](LICENSE).
