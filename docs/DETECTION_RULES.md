@@ -2,6 +2,18 @@
 
 Danger Gate evaluates supported tool names and pending input before the tool runs. A match opens the human confirmation window.
 
+## Event coverage
+
+Danger Gate can evaluate an action only when Codex emits a matching `PreToolUse` event.
+
+| Exposed tool event | What Danger Gate evaluates |
+| --- | --- |
+| `Bash` | Command text against the shell and command rules below |
+| `apply_patch`, `Edit`, `Write` | Supported patch text for file deletion or movement |
+| `mcp__.*` | MCP tool name for destructive indicators |
+
+The current Codex Desktop `functions.exec` → `shell_command` route does not emit a supported `PreToolUse` event. Danger Gate receives neither the tool name nor the command, so it cannot show a dialog or return a deny decision for that route. Adding `shell_command` to the matcher cannot fix an event that Codex does not emit.
+
 ## Shell and command input
 
 | Rule | Examples of covered capability |
@@ -18,7 +30,7 @@ Danger Gate evaluates supported tool names and pending input before the tool run
 | Permission takeover | Selected `takeown` and `icacls` ownership or broad permission changes |
 | Obfuscated PowerShell | `-EncodedCommand` and `-enc` payloads |
 
-Patterns are case-insensitive and designed to recognize common command boundaries. Review the source in `scripts/danger-gate.ps1` for the exact regular expressions.
+These rules apply only to command text delivered through a supported event. Patterns are case-insensitive and designed to recognize common command boundaries. Review the source in `scripts/danger-gate.ps1` for the exact regular expressions.
 
 ## File-editing tools
 
@@ -48,6 +60,7 @@ The pending action is denied when:
 ## Known limitations
 
 - Codex can only invoke the gate for tool events it exposes to `PreToolUse`.
+- The current Codex Desktop `functions.exec` → `shell_command` route is not exposed to `PreToolUse`. Commands executed through that route, including PowerShell commands such as `Remove-Item`, bypass Danger Gate; the normal Codex sandbox approval is a separate control and is not this plugin's confirmation window.
 - Regex matching is not a complete shell, SQL, or PowerShell parser.
 - Indirect execution through scripts, aliases, renamed executables, encoded data, or remote APIs may not be recognizable.
 - Database mutations sent through a generically named MCP tool may not be detected.
@@ -56,3 +69,5 @@ The pending action is denied when:
 - Concurrent hooks are independent; this plugin does not control other hooks.
 
 Use least-privilege credentials, backups, protected branches, database access controls, and administrator-managed policies for defense in depth.
+
+Users who want an additional non-enforcing safeguard can opt in to the compact [`AGENTS.md` guidance](OPTIONAL_AGENT_GUIDANCE.md).

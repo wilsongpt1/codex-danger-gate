@@ -1,6 +1,6 @@
 {
   "name": "codex-danger-gate",
-  "version": "0.2.0+codex.20260716033112",
+  "version": "0.2.1+codex.20260716123130",
   "description": "Require explicit human confirmation before supported high-risk Codex tool calls run.",
   "author": {
     "name": "Wilson"
@@ -8,7 +8,7 @@
   "interface": {
     "displayName": "Codex Danger Gate",
     "shortDescription": "Human confirmation for high-risk Agent actions.",
-    "longDescription": "Shows an independent Windows confirmation dialog before supported destructive shell commands, file deletions, force pushes, infrastructure destruction, and destructive MCP tool calls. Denial, timeout, and internal errors fail closed.",
+    "longDescription": "Shows an independent Windows confirmation dialog before supported destructive actions exposed to the PreToolUse hook. Denial, timeout, and internal errors fail closed; unexposed tool routes remain outside plugin coverage.",
     "developerName": "Wilson",
     "category": "Productivity",
     "capabilities": [
