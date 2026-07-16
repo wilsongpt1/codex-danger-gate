@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [switch]$DetectOnly
+    [switch]$DetectOnly,
+    [switch]$DenyOnly
 )
 
 Set-StrictMode -Version Latest
@@ -23,11 +24,16 @@ function Add-Finding {
 
 function Get-RiskFindings {
     param(
+        [string]$HookEventName,
         [string]$ToolName,
         [string]$Command
     )
 
     $findings = [System.Collections.Generic.List[object]]::new()
+
+    if ($HookEventName -eq 'PermissionRequest') {
+        Add-Finding $findings "sandbox-permission-request" "The action requests permission beyond the current sandbox boundary."
+    }
 
     if ($ToolName -match '^(apply_patch|Edit|Write)$') {
         if ($Command -match '(?im)^\*\*\*\s+Delete File:') {
@@ -45,6 +51,11 @@ function Get-RiskFindings {
         }
         return $findings
     }
+
+    # Freeform wrappers can contain JSON-quoted command values. Replacing quote
+    # delimiters lets the command-boundary rules inspect wrapped commands
+    # without executing or fully parsing JavaScript.
+    $scanCommand = $Command -replace '["'']', ' '
 
     $rules = @(
         @{ Id = "filesystem-delete"; Pattern = '(?i)(?:^|[\s;&|])(?:Remove-Item|Clear-Content|rm|del|erase|rmdir|rd|shred)(?:\.exe)?(?:\s|$)'; Reason = "The command deletes files, directories, or file contents." },
@@ -70,7 +81,7 @@ function Get-RiskFindings {
     )
 
     foreach ($rule in $rules) {
-        if ($Command -match $rule.Pattern) {
+        if ($scanCommand -match $rule.Pattern) {
             Add-Finding $findings $rule.Id $rule.Reason
         }
     }
@@ -78,8 +89,55 @@ function Get-RiskFindings {
     return $findings
 }
 
+function Convert-HookInputToText {
+    param(
+        [string]$ToolName,
+        [object]$HookInput
+    )
+
+    if ($null -eq $HookInput) {
+        return ""
+    }
+
+    $candidates = [System.Collections.Generic.List[object]]::new()
+    foreach ($propertyName in @('command', 'tool_input', 'tool_args', 'arguments', 'prefix_rule', 'sandbox_permissions', 'justification')) {
+        if ($HookInput.PSObject.Properties.Name -contains $propertyName) {
+            $value = $HookInput.$propertyName
+            if ($null -ne $value) {
+                $candidates.Add($value)
+            }
+        }
+    }
+
+    foreach ($candidate in $candidates) {
+        if ($candidate -is [string] -and -not [string]::IsNullOrWhiteSpace([string]$candidate)) {
+            return [string]$candidate
+        }
+
+        foreach ($propertyName in @('command', 'code', 'source', 'script')) {
+            if ($candidate.PSObject.Properties.Name -contains $propertyName) {
+                $value = [string]$candidate.$propertyName
+                if (-not [string]::IsNullOrWhiteSpace($value)) {
+                    return $value
+                }
+            }
+        }
+    }
+
+    if ($candidates.Count -gt 0) {
+        return ConvertTo-Json -InputObject @($candidates) -Depth 20
+    }
+
+    if ($ToolName -match '^mcp__') {
+        return $HookInput | ConvertTo-Json -Depth 20
+    }
+
+    return ""
+}
+
 function Show-ConfirmationDialog {
     param(
+        [string]$HookEventName,
         [string]$ToolName,
         [string]$WorkingDirectory,
         [string]$Command,
@@ -100,7 +158,7 @@ function Show-ConfirmationDialog {
     $form.FormBorderStyle = "Sizable"
 
     $heading = New-Object System.Windows.Forms.Label
-    $heading.Text = "A high-risk Agent action is waiting for your approval."
+    $heading.Text = "A high-risk or elevated Agent action is waiting for your approval."
     $heading.Font = New-Object System.Drawing.Font("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
     $heading.AutoSize = $true
     $heading.Location = New-Object System.Drawing.Point(18, 16)
@@ -126,6 +184,7 @@ function Show-ConfirmationDialog {
     $riskText = ($Findings | ForEach-Object { "- $($_.Reason)" }) -join [Environment]::NewLine
     $displayCommand = if ($Command.Length -gt 16000) { $Command.Substring(0, 16000) + "`r`n...[truncated]" } else { $Command }
     $details.Text = @"
+Hook event: $HookEventName
 Tool: $ToolName
 Working directory: $WorkingDirectory
 
@@ -181,18 +240,35 @@ $displayCommand
 }
 
 function Write-DenyDecision {
-    param([string]$Reason)
+    param(
+        [string]$HookEventName,
+        [string]$Reason
+    )
 
-    @{
-        hookSpecificOutput = @{
-            hookEventName = "PreToolUse"
-            permissionDecision = "deny"
-            permissionDecisionReason = $Reason
+    $hookSpecificOutput = @{
+        hookEventName = $HookEventName
+    }
+
+    if ($HookEventName -eq 'PermissionRequest') {
+        $hookSpecificOutput.decision = @{
+            behavior = "deny"
+            message = $Reason
         }
-    } | ConvertTo-Json -Depth 4 -Compress | Write-Output
+    }
+    else {
+        $hookSpecificOutput.permissionDecision = "deny"
+        $hookSpecificOutput.permissionDecisionReason = $Reason
+    }
+
+    @{ hookSpecificOutput = $hookSpecificOutput } | ConvertTo-Json -Depth 5 -Compress | Write-Output
 }
 
+$hookEventName = "PreToolUse"
 try {
+    if ($DetectOnly -and $DenyOnly) {
+        throw "DetectOnly and DenyOnly cannot be used together."
+    }
+
     $utf8 = New-Object System.Text.UTF8Encoding($false)
     $stdin = [Console]::OpenStandardInput()
     $reader = New-Object System.IO.StreamReader($stdin, $utf8, $true)
@@ -207,6 +283,13 @@ try {
     }
 
     $hookInput = $rawInput | ConvertFrom-Json
+    if ($hookInput.PSObject.Properties.Name -contains "hook_event_name") {
+        $hookEventName = [string]$hookInput.hook_event_name
+    }
+    if ($hookEventName -notin @('PreToolUse', 'PermissionRequest')) {
+        throw "Unsupported hook event: $hookEventName"
+    }
+
     $toolName = [string]$hookInput.tool_name
     $workingDirectory = [string]$hookInput.cwd
 
@@ -214,21 +297,14 @@ try {
         throw "The hook input did not contain tool_name."
     }
 
-    $command = ""
-    if ($null -ne $hookInput.tool_input) {
-        if ($hookInput.tool_input.PSObject.Properties.Name -contains "command") {
-            $command = [string]$hookInput.tool_input.command
-        }
-        elseif ($toolName -match '^mcp__') {
-            $command = $hookInput.tool_input | ConvertTo-Json -Depth 20
-        }
-    }
+    $command = Convert-HookInputToText -ToolName $toolName -HookInput $hookInput
 
-    $findings = @(Get-RiskFindings -ToolName $toolName -Command $command)
+    $findings = @(Get-RiskFindings -HookEventName $hookEventName -ToolName $toolName -Command $command)
 
     if ($DetectOnly) {
         @{
             risky = $findings.Count -gt 0
+            event = $hookEventName
             tool = $toolName
             findings = $findings
         } | ConvertTo-Json -Depth 5 -Compress | Write-Output
@@ -239,16 +315,21 @@ try {
         exit 0
     }
 
-    $approved = Show-ConfirmationDialog -ToolName $toolName -WorkingDirectory $workingDirectory -Command $command -Findings $findings
+    if ($DenyOnly) {
+        Write-DenyDecision -HookEventName $hookEventName -Reason "Danger Gate deny-output verification."
+        exit 0
+    }
+
+    $approved = Show-ConfirmationDialog -HookEventName $hookEventName -ToolName $toolName -WorkingDirectory $workingDirectory -Command $command -Findings $findings
     if (-not $approved) {
-        Write-DenyDecision "High-risk action denied or confirmation timed out."
+        Write-DenyDecision -HookEventName $hookEventName -Reason "High-risk action denied or confirmation timed out."
     }
 }
 catch {
-    if ($DetectOnly) {
+    if ($DetectOnly -or $DenyOnly) {
         Write-Error $_
         exit 1
     }
 
-    Write-DenyDecision "High-risk confirmation gate failed closed: $($_.Exception.Message)"
+    Write-DenyDecision -HookEventName $hookEventName -Reason "High-risk confirmation gate failed closed: $($_.Exception.Message)"
 }

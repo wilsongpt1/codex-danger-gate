@@ -5,7 +5,7 @@ This guide covers online installation from GitHub, offline installation from a r
 ## 1. Requirements
 
 - Windows 10 or Windows 11
-- Codex Desktop or Codex CLI with plugin and hook support; protection is limited to tool events Codex exposes to `PreToolUse`
+- Codex Desktop or Codex CLI with plugin and hook support; hard protection is limited to `PreToolUse` and `PermissionRequest` events Codex exposes
 - Windows PowerShell 5.1 or PowerShell 7
 - Network access to GitHub for online installation
 
@@ -72,14 +72,14 @@ Inside the Codex CLI terminal interface, enter:
 /hooks
 ```
 
-Review the pending hook and verify:
+Review the pending hooks and verify:
 
-1. The event is `PreToolUse`.
-2. The source is the `codex-danger-gate` plugin.
-3. The matcher is `^(Bash|apply_patch|Edit|Write|mcp__.*)$`.
-4. The command points to `scripts\danger-gate.ps1` inside the installed plugin.
-5. Press `t` to trust the reviewed hook.
-6. Confirm the hooks screen reports one installed and one active `PreToolUse` hook.
+1. The source is the `codex-danger-gate` plugin.
+2. `SessionStart` uses `scripts\safety-context.ps1` for `startup|resume|clear|compact`.
+3. `SubagentStart` uses `scripts\safety-context.ps1` with the all-events matcher.
+4. `PreToolUse` uses `scripts\danger-gate.ps1` with `^(Bash|apply_patch|Edit|Write|mcp__.*)$`.
+5. `PermissionRequest` uses `scripts\danger-gate.ps1` with the all-events matcher.
+6. Press `t` to trust each reviewed definition and confirm `/hooks` reports them active.
 
 Do not use `--dangerously-bypass-hook-trust` for a normal installation. Restart Codex Desktop or create a new task after trusting the hook.
 
@@ -96,13 +96,15 @@ $testPath
 
 In a new Codex task, ask the Agent to delete only the printed disposable directory.
 
-This verification covers only actions routed through a supported `PreToolUse` event. The current Codex Desktop `functions.exec` → `shell_command` route is not exposed to the hook and will not open a Danger Gate window.
+This verification can exercise either a supported `PreToolUse` event or a sandbox `PermissionRequest`. Keep the disposable directory outside the task's active workspace; otherwise a wrapped action may already have write permission and emit neither event.
 
 Expected behavior:
 
 1. Danger Gate opens a separate confirmation window.
 2. Clicking **Deny** leaves the test directory in place.
-3. Clicking **Allow once** releases the gate, but Codex may still require its normal sandbox approval. The two approval layers are independent.
+3. The dialog identifies whether it came from `PreToolUse` or `PermissionRequest`.
+4. Clicking **Allow once** releases the gate, but Codex may still require its normal sandbox approval. The two approval layers are independent.
+5. If no dialog appears, the current Codex build did not expose that route to either hard hook. Treat it as behavioral-policy-only coverage.
 
 Never use real documents, repositories, photos, backups, or production data for an initial test.
 
@@ -137,6 +139,7 @@ codex-danger-gate\
 ├─ plugins\codex-danger-gate\.codex-plugin\plugin.json
 ├─ plugins\codex-danger-gate\hooks\hooks.json
 ├─ plugins\codex-danger-gate\scripts\danger-gate.ps1
+├─ plugins\codex-danger-gate\scripts\safety-context.ps1
 ├─ INSTALL.md
 └─ README.md
 ```
@@ -185,4 +188,4 @@ See [Troubleshooting](docs/TROUBLESHOOTING.md) for hook trust, missing dialogs, 
 
 ## 10. Security limits
 
-Danger Gate is an additional guardrail, not a complete sandbox. It cannot inspect actions that Codex does not expose to `PreToolUse`, including the current Codex Desktop `functions.exec` → `shell_command` route. Continue using least-privilege filesystem and cloud credentials, network restrictions, Git, tested backups, and separate development and production environments. Optionally add the compact [`AGENTS.md` guidance](docs/OPTIONAL_AGENT_GUIDANCE.md) as a behavioral safeguard; it is not enforcement.
+Danger Gate is an additional guardrail, not a complete sandbox. It cannot hard-block actions that Codex exposes to neither `PreToolUse` nor `PermissionRequest`, including wrapped actions inside an already writable workspace. The automatically injected startup policy is behavioral guidance, not enforcement. Continue using least-privilege filesystem and cloud credentials, disposable workspaces, network restrictions, Git, tested backups, and separate development and production environments.

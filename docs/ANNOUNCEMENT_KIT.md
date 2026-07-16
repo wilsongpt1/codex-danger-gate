@@ -10,7 +10,7 @@ This kit provides reusable English copy and a practical launch checklist for int
 
 **Difference:** The confirmation window is independent of the current session's **Approve for me** setting. Denial, timeout, malformed input, and internal gate errors fail closed.
 
-**Honest boundary:** It is a regex- and tool-name-based guardrail over supported `PreToolUse` events, not a complete sandbox or a guarantee that every destructive action will be detected.
+**Honest boundary:** Hard blocking depends on Codex exposing `PreToolUse` or `PermissionRequest`. Startup context adds a behavioral safeguard, but actions inside an already writable workspace can still bypass the hard dialog when no event is emitted.
 
 ## Recommended launch assets
 
@@ -18,7 +18,7 @@ Create these assets before posting broadly:
 
 1. A 20–30 second screen recording showing installation, `/hooks` trust, a disposable delete request, and **Deny** preserving the directory.
 2. A screenshot of the wrapped confirmation dialog showing the tool, working directory, detected risk, and pending input.
-3. A simple architecture image: `Codex tool request → PreToolUse hook → risk match → human dialog → allow/deny`.
+3. A simple architecture image: `session policy + exposed PreToolUse/PermissionRequest → human dialog where available → Codex sandbox`.
 4. A release link, direct ZIP link, SHA-256 checksum, and two-command install snippet.
 5. A short limitations statement visible in the post, not hidden at the bottom.
 
@@ -31,7 +31,7 @@ codex plugin marketplace add wilsongpt1/codex-danger-gate
 codex plugin add codex-danger-gate@danger-gate
 ```
 
-After installation, users must review and trust the `PreToolUse` hook through `/hooks` and start a new task.
+After installation, users must review and trust the `SessionStart`, `SubagentStart`, `PreToolUse`, and `PermissionRequest` hooks through `/hooks` and start a new task.
 
 ## GitHub Discussion announcement
 
@@ -43,7 +43,7 @@ Codex Danger Gate v0.2.0 — independent human confirmation for high-risk Agent 
 
 I built **Codex Danger Gate**, an open-source Windows plugin for developers who use Codex automation but still want a separate human checkpoint before supported destructive actions run.
 
-It uses a `PreToolUse` hook to detect common high-risk operations, including file deletion, destructive Git commands, database drops, infrastructure destruction, selected system/security changes, destructive patch operations, and MCP tools whose names indicate irreversible behavior.
+It uses `PreToolUse` to detect supported high-risk operations, `PermissionRequest` to gate exposed sandbox escalations, and startup hooks to inject a concise action-specific confirmation policy without editing user `AGENTS.md` files.
 
 When a rule matches, Danger Gate opens a separate Windows confirmation dialog. The action proceeds only after a person clicks **Allow once**. Denial, closing the window, a 90-second timeout, malformed input, and internal errors fail closed.
 
@@ -70,7 +70,7 @@ I built an open-source Codex plugin that asks a human before high-risk Agent act
 
 I use Codex automation, but I wanted a second checkpoint that is independent of session auto-approval for destructive operations.
 
-So I built **Codex Danger Gate**, a Windows-focused `PreToolUse` plugin. It detects supported forms of file deletion, destructive Git/SQL/infrastructure commands, selected system and security changes, destructive patch operations, and destructive-looking MCP tool names. A match opens a separate confirmation window with the pending input and risk reasons.
+So I built **Codex Danger Gate**, a layered Windows-focused plugin. It detects supported destructive `PreToolUse` inputs, gates exposed sandbox `PermissionRequest` events, and adds concise confirmation context at session and subagent start. A hard-gate event opens a separate confirmation window with the pending input and risk reasons.
 
 The action runs only if a person clicks **Allow once**. Deny, close, timeout, malformed input, and internal errors fail closed.
 
