@@ -1,0 +1,22 @@
+{
+  "name": "codex-danger-gate",
+  "version": "0.1.2+codex.20260716030815",
+  "description": "Require explicit human confirmation before supported high-risk Codex tool calls run.",
+  "author": {
+    "name": "Wilson"
+  },
+  "interface": {
+    "displayName": "Codex Danger Gate",
+    "shortDescription": "Human confirmation for high-risk Agent actions.",
+    "longDescription": "Shows an independent Windows confirmation dialog before supported destructive shell commands, file deletions, force pushes, infrastructure destruction, and destructive MCP tool calls. Denial, timeout, and internal errors fail closed.",
+    "developerName": "Wilson",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive"
+    ],
+    "defaultPrompt": [
+      "Explain which high-risk actions Codex Danger Gate blocks.",
+      "Help me test Codex Danger Gate without changing any files."
+    ]
+  }
+}

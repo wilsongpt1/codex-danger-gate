@@ -1,0 +1,20 @@
+{
+  "name": "wilson-security",
+  "interface": {
+    "displayName": "Wilson Security"
+  },
+  "plugins": [
+    {
+      "name": "codex-danger-gate",
+      "source": {
+        "source": "local",
+        "path": "./plugins/codex-danger-gate"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

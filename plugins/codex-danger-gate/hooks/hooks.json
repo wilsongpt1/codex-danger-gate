@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^(Bash|apply_patch|Edit|Write|mcp__.*)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoLogo -NoProfile -NonInteractive -File \"$PLUGIN_ROOT/scripts/danger-gate.ps1\"",
+            "commandWindows": "powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"%PLUGIN_ROOT%\\scripts\\danger-gate.ps1\"",
+            "timeout": 120,
+            "statusMessage": "Waiting for manual confirmation of a high-risk action"
+          }
+        ]
+      }
+    ]
+  }
+}
