@@ -1,6 +1,6 @@
 {
   "name": "codex-danger-gate",
-  "version": "0.1.2+codex.20260716030815",
+  "version": "0.2.0+codex.20260716033112",
   "description": "Require explicit human confirmation before supported high-risk Codex tool calls run.",
   "author": {
     "name": "Wilson"

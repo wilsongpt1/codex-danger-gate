@@ -1,0 +1,55 @@
+name: Bug report
+description: Report a reproducible problem or false positive
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include credentials, private data, or exploitable security bypasses. Use private vulnerability reporting for security issues.
+  - type: input
+    id: version
+    attributes:
+      label: Danger Gate version
+      placeholder: v0.2.0
+    validations:
+      required: true
+  - type: input
+    id: codex
+    attributes:
+      label: Codex version
+      placeholder: Output of codex --version
+    validations:
+      required: true
+  - type: dropdown
+    id: powershell
+    attributes:
+      label: PowerShell environment
+      options:
+        - Windows PowerShell 5.1
+        - PowerShell 7
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Explain the expected and observed behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Safe reproduction
+      description: Use only disposable local data and sanitize paths and input.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Safety checks
+      options:
+        - label: I removed credentials, private data, and production details.
+          required: true
+        - label: This is not an exploitable security vulnerability.
+          required: true

@@ -1,0 +1,43 @@
+name: Windows validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate JSON files
+        shell: pwsh
+        run: |
+          Get-Content -LiteralPath '.agents/plugins/marketplace.json' -Raw | ConvertFrom-Json | Out-Null
+          Get-Content -LiteralPath 'plugins/codex-danger-gate/.codex-plugin/plugin.json' -Raw | ConvertFrom-Json | Out-Null
+          Get-Content -LiteralPath 'plugins/codex-danger-gate/hooks/hooks.json' -Raw | ConvertFrom-Json | Out-Null
+
+      - name: Validate PowerShell syntax
+        shell: pwsh
+        run: |
+          $errors = @()
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'plugins/codex-danger-gate/scripts/danger-gate.ps1'),
+            [ref]$null,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | Format-List | Out-String | Write-Error
+            exit 1
+          }
+
+      - name: Run detection smoke tests
+        shell: powershell
+        run: powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tests\danger-gate-smoke.ps1

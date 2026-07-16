@@ -1,7 +1,7 @@
 {
-  "name": "wilson-security",
+  "name": "danger-gate",
   "interface": {
-    "displayName": "Wilson Security"
+    "displayName": "Danger Gate"
   },
   "plugins": [
     {
