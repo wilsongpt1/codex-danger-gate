@@ -21,7 +21,7 @@ You should receive an acknowledgement within seven days. Please allow time for i
 
 ## Security model
 
-Codex Danger Gate inspects supported `PreToolUse` events exposed by Codex. It is not a complete sandbox, malware scanner, command parser, database proxy, or organization-enforced policy. Review [Detection rules and limitations](docs/DETECTION_RULES.md) before relying on it.
+Codex Danger Gate inspects supported `PreToolUse` events exposed by Codex. The current Codex Desktop `functions.exec` → `shell_command` route is not exposed to that hook and bypasses this plugin. It is not a complete sandbox, malware scanner, command parser, database proxy, or organization-enforced policy. Review [Detection rules and limitations](docs/DETECTION_RULES.md) before relying on it.
 
 ## Secrets and diagnostic data
 

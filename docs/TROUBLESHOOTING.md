@@ -14,11 +14,16 @@ Open `/hooks`, review the `PreToolUse` hook, and trust it. The definition must b
 
 ## No confirmation window appears
 
-1. Confirm `/hooks` reports the `PreToolUse` hook as active.
-2. Restart Codex Desktop and create a new task.
-3. Confirm the pending action matches a documented rule.
-4. Confirm Windows can launch `powershell.exe` and display Windows Forms.
-5. Confirm the installed hook command points to the plugin's `scripts\danger-gate.ps1`.
+1. Determine which tool route Codex used. The current Codex Desktop `functions.exec` → `shell_command` route is not exposed to `PreToolUse` and cannot trigger Danger Gate.
+2. If the action used a supported event, confirm `/hooks` reports the `PreToolUse` hook as active.
+3. Restart Codex Desktop and create a new task.
+4. Confirm the pending action matches a documented rule.
+5. Confirm Windows can launch `powershell.exe` and display Windows Forms.
+6. Confirm the installed hook command points to the plugin's `scripts\danger-gate.ps1`.
+
+## A Codex approval appears but no Danger Gate window appears
+
+The Codex sandbox approval and the Danger Gate Windows dialog are separate controls. A sandbox approval can appear for a `functions.exec` → `shell_command` action even though Danger Gate received no `PreToolUse` event. Only the window titled **Codex high-risk action confirmation** belongs to this plugin.
 
 ## The dialog appears behind another window
 
@@ -30,7 +35,14 @@ Click **Deny**, copy only a sanitized version of the command, and open a false-p
 
 ## A dangerous action is not detected
 
-Do not retry it against real data. Reproduce the behavior with a disposable local target and report a detection gap. Use private vulnerability reporting if the bypass is broadly exploitable or defeats a documented rule.
+Do not retry it against real data. First determine whether Codex exposed the action through a supported event:
+
+- If the route was `functions.exec` → `shell_command`, this is a documented platform coverage limit.
+- If a supported event reached the hook but a documented rule did not match, reproduce it with a disposable local target and report a detection gap.
+
+Use private vulnerability reporting if the bypass is broadly exploitable or defeats documented supported-event behavior.
+
+For defense in depth, review the optional compact [`AGENTS.md` guidance](OPTIONAL_AGENT_GUIDANCE.md). It shapes Agent behavior but does not enforce policy.
 
 ## Plugin update is not visible
 

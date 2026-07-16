@@ -5,7 +5,7 @@ This guide covers online installation from GitHub, offline installation from a r
 ## 1. Requirements
 
 - Windows 10 or Windows 11
-- Codex Desktop or Codex CLI with plugin and hook support
+- Codex Desktop or Codex CLI with plugin and hook support; protection is limited to tool events Codex exposes to `PreToolUse`
 - Windows PowerShell 5.1 or PowerShell 7
 - Network access to GitHub for online installation
 
@@ -96,6 +96,8 @@ $testPath
 
 In a new Codex task, ask the Agent to delete only the printed disposable directory.
 
+This verification covers only actions routed through a supported `PreToolUse` event. The current Codex Desktop `functions.exec` → `shell_command` route is not exposed to the hook and will not open a Danger Gate window.
+
 Expected behavior:
 
 1. Danger Gate opens a separate confirmation window.
@@ -183,4 +185,4 @@ See [Troubleshooting](docs/TROUBLESHOOTING.md) for hook trust, missing dialogs, 
 
 ## 10. Security limits
 
-Danger Gate is an additional guardrail, not a complete sandbox. Continue using least-privilege filesystem and cloud credentials, network restrictions, Git, tested backups, and separate development and production environments.
+Danger Gate is an additional guardrail, not a complete sandbox. It cannot inspect actions that Codex does not expose to `PreToolUse`, including the current Codex Desktop `functions.exec` → `shell_command` route. Continue using least-privilege filesystem and cloud credentials, network restrictions, Git, tested backups, and separate development and production environments. Optionally add the compact [`AGENTS.md` guidance](docs/OPTIONAL_AGENT_GUIDANCE.md) as a behavioral safeguard; it is not enforcement.

@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.2.1] - 2026-07-16
+
+### Changed
+
+- Documented that the current Codex Desktop `functions.exec` → `shell_command` route is not exposed to `PreToolUse` and therefore bypasses Danger Gate.
+- Added a route-by-route coverage matrix, clearer sandbox-versus-plugin troubleshooting, and safer verification guidance.
+- Added optional compact `AGENTS.md` guidance as a non-enforcing defense-in-depth measure without modifying user repositories.
+
 ## [0.2.0] - 2026-07-16
 
 ### Added
