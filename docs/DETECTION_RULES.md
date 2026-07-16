@@ -1,18 +1,20 @@
 # Detection Rules
 
-Danger Gate evaluates supported tool names and pending input before the tool runs. A match opens the human confirmation window.
+Danger Gate evaluates supported tool names and pending input before the tool runs. It also gates exposed sandbox permission requests and injects a compact confirmation policy at session and subagent start.
 
 ## Event coverage
 
-Danger Gate can evaluate an action only when Codex emits a matching `PreToolUse` event.
+Danger Gate has three event-dependent layers:
 
-| Exposed tool event | What Danger Gate evaluates |
-| --- | --- |
-| `Bash` | Command text against the shell and command rules below |
-| `apply_patch`, `Edit`, `Write` | Supported patch text for file deletion or movement |
-| `mcp__.*` | MCP tool name for destructive indicators |
+| Exposed event | What Danger Gate does | Strength |
+| --- | --- | --- |
+| `Bash` `PreToolUse` | Evaluates command text against the rules below | Hard gate |
+| `apply_patch`, `Edit`, `Write` `PreToolUse` | Evaluates supported patch text for deletion or movement | Hard gate |
+| `mcp__.*` `PreToolUse` | Evaluates the MCP tool name for destructive indicators | Hard gate |
+| `PermissionRequest` | Gates any exposed sandbox-boundary escalation and also evaluates available command input | Hard gate |
+| `SessionStart`, `SubagentStart` | Injects the action-specific confirmation policy | Behavioral guard only |
 
-The current Codex Desktop `functions.exec` → `shell_command` route does not emit a supported `PreToolUse` event. Danger Gate receives neither the tool name nor the command, so it cannot show a dialog or return a deny decision for that route. Adding `shell_command` to the matcher cannot fix an event that Codex does not emit.
+The current Codex Desktop `functions.exec` → `shell_command` route does not emit a supported `PreToolUse` event. It can receive a hard gate only if Codex separately emits `PermissionRequest` because the action crosses the sandbox. Inside an already writable workspace, the route may emit neither event; the startup behavioral policy is then the only Danger Gate layer.
 
 ## Shell and command input
 
@@ -59,8 +61,10 @@ The pending action is denied when:
 
 ## Known limitations
 
-- Codex can only invoke the gate for tool events it exposes to `PreToolUse`.
-- The current Codex Desktop `functions.exec` → `shell_command` route is not exposed to `PreToolUse`. Commands executed through that route, including PowerShell commands such as `Remove-Item`, bypass Danger Gate; the normal Codex sandbox approval is a separate control and is not this plugin's confirmation window.
+- Codex can invoke the hard gate only for events it exposes to `PreToolUse` or `PermissionRequest`.
+- `PermissionRequest` coverage also depends on Codex emitting the event for that tool handler and platform build.
+- The current Codex Desktop `functions.exec` → `shell_command` route is not exposed to `PreToolUse`. Inside an already writable workspace it may also avoid `PermissionRequest`, so destructive commands can bypass the hard dialog.
+- Session and subagent policy injection shapes Agent behavior but cannot enforce a deny decision.
 - Regex matching is not a complete shell, SQL, or PowerShell parser.
 - Indirect execution through scripts, aliases, renamed executables, encoded data, or remote APIs may not be recognizable.
 - Database mutations sent through a generically named MCP tool may not be detected.
@@ -70,4 +74,4 @@ The pending action is denied when:
 
 Use least-privilege credentials, backups, protected branches, database access controls, and administrator-managed policies for defense in depth.
 
-Users who want an additional non-enforcing safeguard can opt in to the compact [`AGENTS.md` guidance](OPTIONAL_AGENT_GUIDANCE.md).
+The plugin injects its compact non-enforcing policy automatically. Users can also keep the same rule explicitly in [`AGENTS.md`](OPTIONAL_AGENT_GUIDANCE.md) for durable visibility.

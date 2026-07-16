@@ -1,14 +1,15 @@
 # Optional Agent Guidance
 
-This optional `AGENTS.md` snippet asks Codex to request a separate confirmation before destructive actions that may not reach Danger Gate. It is a behavioral safeguard, not enforcement: an Agent can misunderstand or fail to follow prompt guidance, and the text cannot create a missing `PreToolUse` event.
+Danger Gate 0.3.0 injects this policy automatically through `SessionStart` and `SubagentStart`. This optional `AGENTS.md` copy is useful when users want the same rule to remain visible and durable even when the plugin is disabled or unavailable.
 
-The plugin does not install or modify global or project-level `AGENTS.md` files. Users may add this snippet themselves at the scope they choose.
+The plugin never installs or modifies global or project-level `AGENTS.md` files. Both injected and copied guidance are behavioral safeguards, not enforcement: they cannot create a missing tool event or override filesystem permissions.
 
 ```markdown
-Before any destructive or irreversible action, state its target and material
-effect and obtain the user's explicit, action-specific confirmation. This
-applies to every tool route; sandbox approval is not confirmation. If the
-target or material effect changes, confirm again.
+Before any destructive or irreversible action, state the exact target, scope,
+and material effect, then wait for the user's explicit confirmation of that
+specific action. A tool or sandbox approval does not count as confirmation. If
+the target, scope, or material effect changes, stop and ask again. Do not use an
+alternate execution route to avoid this requirement.
 ```
 
 Use `~/.codex/AGENTS.md` for a personal default across repositories, or a repository `AGENTS.md` for project-specific use. More specific project guidance can take precedence, so do not rely on this text as a security boundary.

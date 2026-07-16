@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-07-16
+
+### Added
+
+- Added `PermissionRequest` gating for sandbox escalation events Codex exposes, with an independent confirmation dialog before the normal approval flow.
+- Added concise destructive-action confirmation context through `SessionStart` and `SubagentStart` without modifying user `AGENTS.md` files.
+- Added wrapped-command input handling and automated coverage for permission requests and startup context.
+
+### Changed
+
+- Reframed the project as a layered guardrail and documented hard gates, behavioral safeguards, native sandbox boundaries, and routes with no hard coverage separately.
+- Made writable-workspace and `functions.exec` limitations prominent throughout installation, testing, detection, and troubleshooting guidance.
+
 ## [0.2.1] - 2026-07-16
 
 ### Changed

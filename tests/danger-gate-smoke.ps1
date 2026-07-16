@@ -6,22 +6,27 @@ $ErrorActionPreference = "Stop"
 
 $gate = Resolve-Path (Join-Path $PSScriptRoot '..\plugins\codex-danger-gate\scripts\danger-gate.ps1')
 $cases = @(
-    @{ Name = 'safe command'; Tool = 'Bash'; Input = @{ command = 'Get-ChildItem -LiteralPath C:\Temp' }; Risky = $false; Finding = $null },
-    @{ Name = 'file deletion'; Tool = 'Bash'; Input = @{ command = 'Remove-Item -LiteralPath C:\Temp\example.txt' }; Risky = $true; Finding = 'filesystem-delete' },
-    @{ Name = 'hard reset'; Tool = 'Bash'; Input = @{ command = 'git reset --hard HEAD~1' }; Risky = $true; Finding = 'git-reset-hard' },
-    @{ Name = 'database drop'; Tool = 'Bash'; Input = @{ command = 'DROP TABLE customers;' }; Risky = $true; Finding = 'database-destructive' },
-    @{ Name = 'patch deletion'; Tool = 'apply_patch'; Input = @{ command = "*** Begin Patch`n*** Delete File: example.txt`n*** End Patch" }; Risky = $true; Finding = 'patch-delete' },
-    @{ Name = 'destructive MCP name'; Tool = 'mcp__supabase__delete_project'; Input = @{ project = 'dummy' }; Risky = $true; Finding = 'destructive-mcp' },
-    @{ Name = 'Unicode input'; Tool = 'Bash'; Input = @{ command = 'Write-Output "Unicode safety test — café"' }; Risky = $false; Finding = $null }
+    @{ Name = 'safe command'; Event = 'PreToolUse'; Tool = 'Bash'; Input = @{ command = 'Get-ChildItem -LiteralPath C:\Temp' }; Risky = $false; Finding = $null },
+    @{ Name = 'file deletion'; Event = 'PreToolUse'; Tool = 'Bash'; Input = @{ command = 'Remove-Item -LiteralPath C:\Temp\example.txt' }; Risky = $true; Finding = 'filesystem-delete' },
+    @{ Name = 'hard reset'; Event = 'PreToolUse'; Tool = 'Bash'; Input = @{ command = 'git reset --hard HEAD~1' }; Risky = $true; Finding = 'git-reset-hard' },
+    @{ Name = 'database drop'; Event = 'PreToolUse'; Tool = 'Bash'; Input = @{ command = 'DROP TABLE customers;' }; Risky = $true; Finding = 'database-destructive' },
+    @{ Name = 'patch deletion'; Event = 'PreToolUse'; Tool = 'apply_patch'; Input = @{ command = "*** Begin Patch`n*** Delete File: example.txt`n*** End Patch" }; Risky = $true; Finding = 'patch-delete' },
+    @{ Name = 'destructive MCP name'; Event = 'PreToolUse'; Tool = 'mcp__supabase__delete_project'; Input = @{ project = 'dummy' }; Risky = $true; Finding = 'destructive-mcp' },
+    @{ Name = 'safe permission escalation'; Event = 'PermissionRequest'; Tool = 'functions.exec'; Input = 'Get-ChildItem -LiteralPath C:\Protected'; Risky = $true; Finding = 'sandbox-permission-request' },
+    @{ Name = 'destructive permission escalation'; Event = 'PermissionRequest'; Tool = 'functions.exec'; Input = 'await tools.shell_command({"command":"Remove-Item -LiteralPath C:\\Protected\\example.txt"});'; Risky = $true; Finding = 'filesystem-delete' },
+    @{ Name = 'Unicode input'; Event = 'PreToolUse'; Tool = 'Bash'; Input = @{ command = 'Write-Output "Unicode safety test — café"' }; Risky = $false; Finding = $null }
 )
 
 function Invoke-Detection {
     param(
+        [string]$Event,
         [string]$Tool,
-        [hashtable]$InputObject
+        [object]$InputObject,
+        [string]$Mode = '-DetectOnly'
     )
 
     $payload = @{
+        hook_event_name = $Event
         tool_name = $Tool
         cwd = 'C:\Temp'
         tool_input = $InputObject
@@ -29,7 +34,7 @@ function Invoke-Detection {
 
     $startInfo = New-Object System.Diagnostics.ProcessStartInfo
     $startInfo.FileName = 'powershell.exe'
-    $startInfo.Arguments = "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$gate`" -DetectOnly"
+    $startInfo.Arguments = "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$gate`" $Mode"
     $startInfo.UseShellExecute = $false
     $startInfo.RedirectStandardInput = $true
     $startInfo.RedirectStandardOutput = $true
@@ -60,8 +65,18 @@ function Invoke-Detection {
 
 $failures = [System.Collections.Generic.List[string]]::new()
 
+$preToolDeny = Invoke-Detection -Event 'PreToolUse' -Tool 'Bash' -InputObject @{ command = 'Remove-Item -LiteralPath C:\Temp\example.txt' } -Mode '-DenyOnly'
+if ($preToolDeny.hookSpecificOutput.hookEventName -ne 'PreToolUse' -or $preToolDeny.hookSpecificOutput.permissionDecision -ne 'deny') {
+    $failures.Add('PreToolUse deny output did not contain permissionDecision=deny')
+}
+
+$permissionDeny = Invoke-Detection -Event 'PermissionRequest' -Tool 'functions.exec' -InputObject 'Get-ChildItem -LiteralPath C:\Protected' -Mode '-DenyOnly'
+if ($permissionDeny.hookSpecificOutput.hookEventName -ne 'PermissionRequest' -or $permissionDeny.hookSpecificOutput.decision.behavior -ne 'deny') {
+    $failures.Add('PermissionRequest deny output did not contain decision.behavior=deny')
+}
+
 foreach ($case in $cases) {
-    $result = Invoke-Detection -Tool $case.Tool -InputObject $case.Input
+    $result = Invoke-Detection -Event $case.Event -Tool $case.Tool -InputObject $case.Input
     $findingIds = @($result.findings | ForEach-Object { $_.Id })
 
     if ([bool]$result.risky -ne [bool]$case.Risky) {
@@ -79,4 +94,4 @@ if ($failures.Count -gt 0) {
     exit 1
 }
 
-Write-Host "Passed $($cases.Count) Danger Gate smoke tests."
+Write-Host "Passed $($cases.Count) detection cases and 2 deny-output cases."
