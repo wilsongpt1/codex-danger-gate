@@ -78,6 +78,7 @@ In a new Codex task, ask the Agent to delete only the printed disposable directo
 - [Installation, update, removal, and verification](INSTALL.md)
 - [Detection rules and limitations](docs/DETECTION_RULES.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [Announcement and launch kit](docs/ANNOUNCEMENT_KIT.md)
 - [Security policy](SECURITY.md)
 - [Contributing](CONTRIBUTING.md)
 - [Support](SUPPORT.md)
